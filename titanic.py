@@ -41,27 +41,35 @@ trainX = trainX.values
 # print(trainY.shape, trainX.shape, len(attrX) == len(trainX[0]))
 
 # let's take a look whether individual attributes correlate with a passenger's survival
-print(trainY)
-print(trainX[:, np.where(attrX == 'Male')].flatten())
+# print(trainY)
+# print(trainX[:, np.where(attrX == 'Male')].flatten())
 
 for attr in attrX:
-	dta = trainX[:, np.where(attrX == attr)].flatten()
+	col = trainX[:, np.where(attrX == attr)].flatten()
 	print(
 		'Correlation of \"Survived\" and \"{}\": {}'.format( 
 			attr,
-			np.corrcoef(trainY, dta)[0, 1]
+			np.corrcoef(trainY, col)[0, 1]
 		)
 	)
 
-	slope, intercept, rSqu, p, stdErr = stat.linregress(trainY, dta)
-	def f(x):
-		return intercept + slope * x
+	slope, intercept, rSqu, p, stdErr = stat.linregress(trainY, col)
+
+	# plot.scatter(trainY, col)
+	# plot.xlabel('Survived')
+	# plot.ylabel(attr)
+	# plot.plot(col, intercept + slope * col, c = 'r')
+	# plot.xlim([0.0, 1.0])
+	# plot.show()
+
+# change ('C', 'Q', 'S') == (0, 1, 2) to hot-one encoding
+print(trainData.head())
+embarked = trainData[['Embarked']].values.flatten()
+print(len(embarked))
 
 
-	plot.scatter(trainY, dta)
-	plot.xlabel('Survived')
-	plot.ylabel(attr)
-	plot.plot(dta, f(dta), c = 'r')
-	plot.xlim([0.0, 1.0])
-	plot.show()
-
+embarkedOneHot = np.array([[1, 0, 0] if i == 0 else ([0, 1, 0] if i == 1 else [0, 0, 1]) for i in embarked])
+embarkedOneHot = pd.DataFrame(embarkedOneHot, columns = ['C', 'Q', 'S'])
+trainData = pd.concat(trainData, embarkedOneHot, axis = 1)
+print(trainData.head(30))
+trainData = trainData.drop(['Embarked'])
