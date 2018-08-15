@@ -68,8 +68,31 @@ embarked = trainData[['Embarked']].values.flatten()
 print(len(embarked))
 
 
-embarkedOneHot = np.array([[1, 0, 0] if i == 0 else ([0, 1, 0] if i == 1 else [0, 0, 1]) for i in embarked])
-embarkedOneHot = pd.DataFrame(embarkedOneHot, columns = ['C', 'Q', 'S'])
-trainData = pd.concat(trainData, embarkedOneHot, axis = 1)
-print(trainData.head(30))
-trainData = trainData.drop(['Embarked'])
+embarkedOneHot = pd.DataFrame(
+	np.array([np.array([1, 0, 0]) if port == 0 else (np.array([0, 1, 0]) if port == 1 else np.array([0, 0, 1])) for port in embarked]),
+	columns = ['Cherbourg', 'Queenstown', 'Southampton']
+)
+
+print(embarkedOneHot.describe())
+print(trainData.describe())
+print(len(trainData[['Male']].values), len(embarkedOneHot.values))
+trainOld = trainData
+trainData = trainData + embarkedOneHot
+for attr in trainData.columns:
+	print(len(trainData[[attr]]))
+
+for attr in embarkedOneHot.columns:
+	trainData[[attr]] = embarkedOneHot[[attr]]
+for attr in trainOld.columns:
+	trainData[[attr]] = trainOld[[attr]]
+# trainData = trainData.dropna()
+
+for attr in trainData.columns:
+	print(len(trainData[[attr]]))
+# trainData = trainData.add(embarkedOneHot[['Queenstown']], axis = 'columns')
+# print(trainData.head(40))
+# print(trainOld.head(40))
+print(len(trainData[['Male']]), len(trainData[['Queenstown']]))
+# trainData = pd.concat(trainData, embarkedOneHot, axis = 1)
+# print(trainData.head(30))
+# trainData = trainData.drop(['Embarked'])
