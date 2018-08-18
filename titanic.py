@@ -7,12 +7,12 @@ trainData = pd.read_csv(
 	'./data/train.csv', 
 	na_values = ['']
 )
-testData = pd.read_csv(
-	'./data/test.csv',
-	na_values = ['']
-)
+# testData = pd.read_csv(
+# 	'./data/test.csv',
+# 	na_values = ['']
+# )
 
-trainData = trainData.drop(['Name', 'Ticket', 'Cabin', 'PassengerId'], axis = 1)
+trainData.drop(['Name', 'Ticket', 'Cabin', 'PassengerId'], axis = 1, inplace = True)
 # I drop these attributes since I think that either:
 #	- they don't contain information useful to know whether someone survived (Name, Passenger ID)
 #	- I don't have the means to dissern useful information from it (all three, Cabin and Ticket because maybe they contain information about where cabin was within the ship
@@ -26,7 +26,7 @@ trainData.reset_index(drop = True, inplace = True)
 trainY = trainData['Survived']
 trainX = trainData.drop(['Survived'], axis = 1)
 
-# let's take a look whether individual attributes correlate with a passenger's survival
+# let's take a look at whether individual attributes correlate with a passenger's survival
 # print(trainY)
 # print(trainX[:, np.where(attrX == 'Male')].flatten())
 
@@ -37,19 +37,38 @@ for attr in trainX.columns:
 			attr,
 			np.corrcoef(trainY, xCol)[0, 1]
 		))
+
+		slope, intercept, rSqu, p, stdErr = stat.linregress(trainY, col)
+		plot.scatter(trainY, col)
+		plot.xlabel('Survived')
+		plot.ylabel(attr)
+		plot.plot(col, intercept + slope * col, c = 'r')
+		plot.xlim([0.0, 1.0])
+		# plot.show()
 	except Exception: 
 		continue # embarked does not yet contain any numbers and will throw an error
 
-	# slope, intercept, rSqu, p, stdErr = stat.linregress(trainY, col)
-
-	# plot.scatter(trainY, col)
-	# plot.xlabel('Survived')
-	# plot.ylabel(attr)
-	# plot.plot(col, intercept + slope * col, c = 'r')
-	# plot.xlim([0.0, 1.0])
+print(trainX.columns)
+for attr in ['Age', 'SibSp', 'Parch', 'Fare']:
+	plot.hist(trainX[attr])
+	plot.xlabel(attr)
 	# plot.show()
 
 def colToHotOne(X, colName, newNameArr):
+	vals = X[colName].values
+
+	oneHotFrame = pd.DataFrame(
+		np.array([]),
+		columns = newNameArr
+	)
+
+	for name in newNameArr:
+		X.assign(
+			# Weg finden, das innerhalb einer Loop zu implementieren
+			inplace = True
+		)
+
+	return X
 
 # change ('C', 'Q', 'S') to hot-one encoding
 embarked = trainX['Embarked'].values.flatten()
@@ -69,42 +88,79 @@ trainX.drop(['Embarked'], inplace = True, axis = 1)
 
 # now we will change the class (1, 2, 3) to one hot encoding, too
 pClass = trainX['Pclass'].values.flatten()
-embarkedOneHot = pd.DataFrame(
+classOneHot = pd.DataFrame(
 	np.array([np.array([1, 0, 0] if passenger == 1 else ([0, 1, 0] if passenger == 2 else [0, 0, 1])) for passenger in pClass]),
 	columns = ['class1', 'class2', 'class3']
 )
 trainX = trainX.assign(
-	class1 = embarkedOneHot['class1'].values,
-	class2 = embarkedOneHot['class2'].values,
-	class3 = embarkedOneHot['class3'].values
+	class1 = classOneHot['class1'].values,
+	class2 = classOneHot['class2'].values,
+	class3 = classOneHot['class3'].values
 )
-trainX.drop(['Pclass'], inplace = True, axis = 1)
-print(trainX.head(20))
+
+trainX.drop(['Pclass'], axis = 1, inplace = True)
 
 
-# print(trainX.head(50))
-# # Problem ist hier gefunden:
-# # 	embarkedOneHot hat fortlaufende Indizes von 1 bis 712,
-# # 	waehrend trainData fehlende Indizes besitzt, weil Punkte durch .dropna() geloescht worden sind
-# # 	entweder muss embarkedOneHot wie trainData indiziert werden oder vice versa
-# # 	vermutlich leichter durch Methode trainData neu fortlaufend zu indexieren
-# # 	danach sollte obige Operation ohne Entstehung von NaNs funktionieren.
+# Now, I standardize Age, SibSp, Parch and Fare
+# from sklearn.preprocessing import StandardScaler
+# scaler = StandardScaler()
 
-# for attr in trainData.columns:
-# 	print(len(trainData[[attr]]))
+# normCols = ['Age', 'SibSp', 'Parch', 'Fare']
+# print(trainX[normCols].describe())
+# toBeNormed = trainX[normCols].values
+# scaler.fit(toBeNormed)
+# norm = pd.DataFrame(scaler.transform(toBeNormed), columns = normCols)
 
-# for attr in embarkedOneHot.columns:
-# 	trainData[[attr]] = embarkedOneHot[[attr]]
-# for attr in trainOld.columns:
-# 	trainData[[attr]] = trainOld[[attr]]
-# # trainData = trainData.dropna()
+# print(norm.describe())
 
-# # for attr in trainData.columns:
-# # 	print(len(trainData[[attr]]))
-# # trainData = trainData.add(embarkedOneHot[['Queenstown']], axis = 'columns')
-# # print(trainData.head(40))
-# # print(trainOld.head(40))
-# print(len(trainData[['Male']]), len(trainData[['Queenstown']]))
-# # trainData = pd.concat(trainData, embarkedOneHot, axis = 1)
-# # print(trainData.head(30))
-# # trainData = trainData.drop(['Embarked'])
+# extract some data to validate from the training
+def randTestData(Y, X, num):
+	from random import randint
+	drawn = []
+	testY = []
+	testX = []
+
+	length = len(Y)
+	i = randint(0, length - 1)
+
+	while len(testY) < num:
+		length = len(Y)
+
+		while i in drawn:
+			i = randint(0, length - 1)
+
+		drawn.append(i)
+
+		testY.append(Y[i])
+		testX.append(X[i])
+
+		Y = np.delete(Y, i)
+		X = np.delete(X, i, 0)
+
+	return (np.array(testY), np.array(testX), Y, X)
+
+testY, testX, trainY, trainX = randTestData(trainY, trainX, int(0.1 * len(trainY)))
+
+
+
+# import keras
+# from keras.models import Sequential
+# from keras.layers import Dense, Dropout
+
+# model = Sequential()
+
+# model.add(Dense(
+# 	64, 
+# 	activation = 'relu', 
+# 	input_shape = (len(trainX[0]), )
+# ))
+# model.add(Dropout(0.5))
+# model.add(Dense(64, activation = 'relu'))
+# model.add(Dropout(0.5))
+# model.add(Dense(1, activation = 'sigmoid'))
+
+# model.compile(
+# 	loss = 'binary_crossentropy',
+# 	optimizer = 'rmsprop',
+# 	metrics = ['accuracy']
+# )
