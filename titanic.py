@@ -100,18 +100,22 @@ trainX = trainX.assign(
 
 trainX.drop(['Pclass'], axis = 1, inplace = True)
 
+print(trainX.head(20))
+
 
 # Now, I standardize Age, SibSp, Parch and Fare
-# from sklearn.preprocessing import StandardScaler
-# scaler = StandardScaler()
+from sklearn.preprocessing import StandardScaler
+scaler = StandardScaler()
 
-# normCols = ['Age', 'SibSp', 'Parch', 'Fare']
-# print(trainX[normCols].describe())
-# toBeNormed = trainX[normCols].values
-# scaler.fit(toBeNormed)
-# norm = pd.DataFrame(scaler.transform(toBeNormed), columns = normCols)
+cols = ['Age', 'SibSp', 'Parch', 'Fare']
 
-# print(norm.describe())
+for col in cols:
+	colValues = trainX[col].values.reshape(-1, 1)
+	scaler.fit(colValues)
+	trainX[col] = scaler.transform(colValues) 
+
+# print(trainX.head(20))
+
 
 # extract some data to validate from the training
 def randTestData(Y, X, num):
@@ -139,28 +143,88 @@ def randTestData(Y, X, num):
 
 	return (np.array(testY), np.array(testX), Y, X)
 
-testY, testX, trainY, trainX = randTestData(trainY, trainX, int(0.1 * len(trainY)))
+testValsY, testValsX, trainValsY, trainValsX = randTestData(trainY.values, trainX.values, int(0.1 * len(trainY)))
 
+print('testValsY')
+print(pd.DataFrame(testValsY).head(5), len(testValsY))
 
+print('testValsX')
+print(pd.DataFrame(testValsX).head(5), len(testValsX))
 
-# import keras
-# from keras.models import Sequential
-# from keras.layers import Dense, Dropout
+print('trainValsY')
+print(pd.DataFrame(trainValsY).head(5), len(trainValsY))
 
-# model = Sequential()
+print('trainValsX')
+print(pd.DataFrame(trainValsX).head(5), len(trainValsX))
 
-# model.add(Dense(
-# 	64, 
-# 	activation = 'relu', 
-# 	input_shape = (len(trainX[0]), )
-# ))
+import keras
+from keras.models import Sequential
+from keras.layers import Dense, Dropout
+
+model = Sequential()
+model.add(Dense(
+	64,
+	activation = 'relu',
+	input_shape = (len(trainValsX[0]), )
+))
+model.add(Dense(8, activation = 'relu'))
+model.add(Dropout(0.5))
+# model.add(Dense(32, activation = 'relu'))
 # model.add(Dropout(0.5))
-# model.add(Dense(64, activation = 'relu'))
+# model.add(Dense(16, activation = 'relu'))
 # model.add(Dropout(0.5))
-# model.add(Dense(1, activation = 'sigmoid'))
+model.add(Dense(1, activation = 'sigmoid'))
 
-# model.compile(
-# 	loss = 'binary_crossentropy',
-# 	optimizer = 'rmsprop',
-# 	metrics = ['accuracy']
-# )
+model.compile(
+	loss = 'binary_crossentropy',
+	optimizer = 'rmsprop',
+	metrics = ['accuracy']
+)
+
+print(model.summary())
+
+classifier = model.fit(
+	trainValsX, trainValsY,
+	batch_size = 5,
+	epochs = 128,
+	verbose = 2,
+	validation_data = (testValsX, testValsY)
+)
+
+
+
+def correctPreds(predY, testY):
+	corrects = 0
+	dataLen = len(predY)
+	for i in range(dataLen - 1):
+		if testY[i] == predY[i]:
+			corrects += 1
+	return corrects / dataLen
+
+def applySVM(trainX, trainY, testX, testY, kernel):
+	from sklearn import svm
+	
+	C = 1.0 # penalty parameter for error term
+	classifier = svm.SVC(kernel = kernel, C = C).fit(trainX, trainY)
+
+	predY =  classifier.predict(testX)
+
+	print('Percentage of correctly predicted testYs using a Support Vector Machine with a ' + kernel + ' kernel: ' + str(correctPreds(predY, testY)) + '\n')
+
+	return classifier
+
+def logRegression(trainX, trainY, testX, testY):
+	from sklearn.linear_model import LogisticRegression
+	classifier = LogisticRegression().fit(trainX, trainY)
+	predY = classifier.predict(testX)
+
+	print('Percentage of correctly predicted testYs using logistic regression: ' + str(correctPreds(predY, testY)))
+
+	return classifier
+
+logClassifier = logRegression(trainValsX, trainValsY, testValsX, testValsY)
+
+applySVM(trainValsX, trainValsY, testValsX, testValsY, 'linear') # linear kernel scores about as well as the decesion trees
+applySVM(trainValsX, trainValsY, testValsX, testValsY, 'sigmoid') # about 50% correct predictions
+applySVM(trainValsX, trainValsY, testValsX, testValsY, 'rbf')
+
