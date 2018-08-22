@@ -64,12 +64,21 @@ for attr in ['Age', 'SibSp', 'Parch', 'Fare']:
 	plot.xlabel(attr)
 	# plot.show()
 
-def colToHotOne(X, colName, newNameArr):
-	vals = X[colName].values
+def colToHotOne(X, col, newNames = []):
+	# returns a version of X where the column col is turned into several one-hot encoded columns
+	vals = X[col].values
+	uniqueVals = vals.unique()
+
+	masks = []
+	for uniqueVal in uniqueVals:
+		currentMask = []
+		for val in vals:
+			currentMask.append(1 if (val == uniqueVal) or (val is uniqueVal) else 0)
+		masks.append(currentMask) 
 
 	oneHotFrame = pd.DataFrame(
-		np.array([]),
-		columns = newNameArr
+		np.array(masks).reshape(-1, 1),
+		columns = (newNameArr if len(newName) != len(masks) else range(1, len(masks)))
 	)
 
 	for name in newNameArr:
@@ -80,10 +89,18 @@ def colToHotOne(X, colName, newNameArr):
 
 	return X
 
+def colsToOneHot(X, cols, nameMatrix = []):
+	for col in cols:
+		X = colToHotOne(
+			X, 
+			col, 
+			nameMatrix[cols.indexOf(col)] if len(nameMatrix) == len(cols) else []
+		)
+
+	return X
+
 # change ('C', 'Q', 'S') to hot-one encoding
 embarked = trainX['Embarked'].values.flatten()
-print(len(embarked))
-
 embarkedOneHot = pd.DataFrame(
 	np.array([np.array([1, 0, 0] if port == 'C' else ([0, 1, 0] if port == 'Q' else [0, 0, 1])) for port in embarked]),
 	columns = ['C', 'Q', 'S']
@@ -216,7 +233,7 @@ def correctPreds(predY, testY):
 			print('Prediction and test data do not have the same length:\n{} for predictions and {} for test data.'.format(
 				len(predY),
 				len(testY)
-			))
+			))			
 			return float(0)
 
 	return corrects / dataLen
@@ -244,11 +261,13 @@ def logRegression(trainX, trainY, testX, testY):
 
 	return classifier
 
-logClassifier = logRegression(trainValsX, trainValsY, testValsX, testValsY)
 
-applySVM(trainValsX, trainValsY, testValsX, testValsY, 'linear') # linear kernel scores about as well as the decesion trees
-applySVM(trainValsX, trainValsY, testValsX, testValsY, 'sigmoid') # about 50% correct predictions
-applySVM(trainValsX, trainValsY, testValsX, testValsY, 'rbf')
-applySVM(trainValsX, trainValsY, testValsX, testValsY, 'poly')
+logClassifier = logRegression(trainValsX, trainValsY, testValsX, testValsY)
+for kernel in ['linear', 'sigmoid', 'rbf', 'poly']:
+	applySVM(trainValsX, trainValsY, testValsX, testValsY, kernel)
 
 # ynew = model.predict_classes(Xnew) how to make the predictions
+
+# Replace missing values by mean/median. If the missing values is very less, then this method would be apt. 
+# Also depends on how skewed your data is.
+# Imputation. Build a linear regression model to predict the missing values based on other parameters. KNN could also be used to predict the missing value
